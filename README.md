@@ -22,6 +22,20 @@ The project is split into two independent parts:
 └── iot/               # ESP32 / Arduino firmware
 ```
 
+## Run everything with one command
+
+From the repository root:
+
+```bash
+pip install -r backend/requirements.txt   # one-time Python deps
+cd frontend && npm install && cd ..       # one-time frontend deps
+
+python run.py            # dev mode: Flask :5000 + Vite React dev server :5173
+python run.py --build    # production mode: builds React app, Flask serves it at :5000
+```
+
+`run.py` starts both services together and stops them cleanly with Ctrl+C.
+
 ## Frontend (React)
 
 ```bash
