@@ -20,9 +20,9 @@ export default function Result() {
         <div className="card nutrition-card" role="status">
           <FiInbox aria-hidden="true" />
           <h3>No result yet</h3>
-          <p>Capture an image from the live feed to see its nutritional information.</p>
+          <p>Upload a photo of the food to see its nutritional information.</p>
           <Link className="retake-button" to="/">
-            <FiRotateCcw aria-hidden="true" /> Go to Camera
+            <FiRotateCcw aria-hidden="true" /> Go to Upload
           </Link>
         </div>
       </MainLayout>
@@ -37,7 +37,7 @@ export default function Result() {
         nutrients={nutrients}
       />
       <Link className="retake-button" to="/">
-        <FiRotateCcw aria-hidden="true" /> Retake Image
+        <FiRotateCcw aria-hidden="true" /> Analyze Another Image
       </Link>
     </MainLayout>
   );

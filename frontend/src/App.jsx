@@ -17,7 +17,7 @@ function NotFound() {
         <div className="card nutrition-card">
           <h3>The page you are looking for does not exist.</h3>
           <Link className="retake-button" to="/">
-            Back to Camera
+            Back to Upload
           </Link>
         </div>
       </main>

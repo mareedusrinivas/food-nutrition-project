@@ -10,10 +10,43 @@ export function apiUrl(path) {
 }
 
 /**
- * POST /api/capture — grab the latest camera frame, run YOLO classification
- * and the USDA nutrition lookup on the server.
+ * POST /api/upload — upload a food photo (multipart 'image' file); the
+ * server runs YOLO classification + the USDA nutrition lookup on it.
+ * This is the primary flow of the app (no webcam required).
  * Resolves with:
  *   { prediction, image, calories, carbohydrates, protein, fat, fiber, sugar }
+ */
+export async function uploadImage(file, signal) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(apiUrl('/api/upload'), {
+    method: 'POST',
+    body: formData,
+    signal,
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    /* non-JSON error body — fall through to the status check below */
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || `Server responded with status: ${response.status}`,
+    );
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return data;
+}
+
+/**
+ * POST /api/capture — grab the latest camera frame (camera mode only;
+ * requires the backend to run with ENABLE_CAMERA=1).
  */
 export async function captureImage(signal) {
   const response = await fetch(apiUrl('/api/capture'), {
