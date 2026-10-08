@@ -11,15 +11,17 @@ Usage:
     python run.py --build      # build the React app first, then serve dist/ from Flask only
                                # (single URL: http://localhost:5000)
 
-Ctrl+C stops both processes cleanly.
+Dependencies are installed AUTOMATICALLY when missing — you never need to run
+the install commands yourself:
+    pip install -r backend/requirements.txt     (auto-run if flask/cv2 missing)
+    cd frontend && npm install                  (auto-run if node_modules missing)
 
-Prerequisites:
-    pip install -r backend/requirements.txt
-    cd frontend && npm install
+Ctrl+C stops both processes cleanly.
 """
 
 import argparse
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -34,7 +36,12 @@ def find_npm():
     """Locate the npm executable (npm.cmd on Windows, npm elsewhere)."""
     if os.name == "nt":
         return "npm.cmd"
-    return "npm"
+    npm = shutil.which("npm")
+    if npm is None:
+        print("[run.py] ERROR: 'npm' not found on PATH.")
+        print("          Install Node.js (>=18) from https://nodejs.org and try again.")
+        sys.exit(1)
+    return npm
 
 
 class Launcher:
@@ -99,21 +106,51 @@ class Launcher:
             return 0
 
 
-def check_prerequisites(build_only=False):
-    ok = True
-    if not os.path.isdir(os.path.join(FRONTEND_DIR, "node_modules")):
-        print("[run.py] ERROR: frontend/node_modules missing.")
-        print("          Run:  cd frontend && npm install")
-        ok = False
+def run_install(cmd, cwd, what):
+    """Run a dependency-install command; abort with a clear message on failure."""
+    print(f"[run.py] {what} ...")
+    print(f"[run.py]   $ {' '.join(cmd)}  (cwd: {os.path.relpath(cwd, ROOT) or '.'})")
+    try:
+        result = subprocess.run(cmd, cwd=cwd)
+    except KeyboardInterrupt:
+        print("\n[run.py] Installation interrupted.")
+        sys.exit(130)
+    except FileNotFoundError:
+        print(f"[run.py] ERROR: '{cmd[0]}' not found. Install Node.js/npm or Python pip first.")
+        sys.exit(1)
+    if result.returncode != 0:
+        print(f"[run.py] ERROR: {what} FAILED (exit code {result.returncode}).")
+        sys.exit(result.returncode)
+
+
+def check_prerequisites():
+    """Auto-install anything that is missing, then re-verify."""
+    # ---- Python dependencies (flask, cv2, ...) ----
     try:
         import flask  # noqa: F401
         import cv2  # noqa: F401
     except ImportError:
-        print("[run.py] ERROR: Python dependencies missing.")
-        print("          Run:  pip install -r backend/requirements.txt")
-        ok = False
-    if not ok:
-        sys.exit(1)
+        reqs = os.path.join(BACKEND_DIR, "requirements.txt")
+        run_install(
+            [sys.executable, "-m", "pip", "install", "-r", reqs],
+            cwd=ROOT,
+            what="Installing Python dependencies (pip install -r backend/requirements.txt)",
+        )
+        try:
+            import flask  # noqa: F401
+            import cv2  # noqa: F401
+        except ImportError as exc:
+            print(f"[run.py] ERROR: Python deps still missing after install ({exc.name}).")
+            print("          Try manually:  python3 -m pip install -r backend/requirements.txt")
+            sys.exit(1)
+
+    # ---- Frontend dependencies (node_modules) ----
+    if not os.path.isdir(os.path.join(FRONTEND_DIR, "node_modules")):
+        run_install([find_npm(), "install"], cwd=FRONTEND_DIR,
+                    what="Installing frontend dependencies (npm install)")
+        if not os.path.isdir(os.path.join(FRONTEND_DIR, "node_modules")):
+            print("[run.py] ERROR: frontend/node_modules still missing after npm install.")
+            sys.exit(1)
 
 
 def main():
