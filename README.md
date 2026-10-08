@@ -72,6 +72,24 @@ export USDA_API_KEY=your_key     # see backend/.env.example
 If `frontend/dist` exists, Flask also serves the built React SPA at
 http://localhost:5000 (client-side routes fall back to `index.html`).
 
+## Camera / no webcam?
+
+The app reads frames from `/dev/video0` by default. If your machine has **no
+camera**, everything still runs — you'll see a single clear warning instead of
+OpenCV log spam, the live feed shows a "No camera detected" placeholder, and
+Capture returns a friendly error until a device is available.
+
+Point the backend at any other source with the `CAMERA_SOURCE` environment
+variable (webcam index, video file, or stream URL):
+
+```bash
+CAMERA_SOURCE=1 python3 run.py                    # second webcam
+CAMERA_SOURCE=/path/to/food_video.mp4 python3 run.py   # demo video (looped)
+```
+
+When a real camera is connected, the feed/capture work automatically — no code
+changes needed.
+
 ## API Contract
 
 | Endpoint | Method | Description |
