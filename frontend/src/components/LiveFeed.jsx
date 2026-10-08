@@ -1,54 +1,36 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FiVideo, FiVideoOff } from 'react-icons/fi';
+import { liveFeedUrl } from '../services/api.js';
 
-// Live camera feed + capture button.
-// Replaces the <img src="/live_feed"> and the static/js/script.js capture logic.
-// The Flask backend exposes a JSON API at /api/capture that returns
-// { prediction, image, calories, carbohydrates, protein, fat, fiber, sugar }.
+/**
+ * LiveFeed — the MJPEG camera stream (<img src="/live_feed">) from
+ * templates/index.html, plus loading/error states for the stream itself.
+ */
 export default function LiveFeed() {
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  const handleCapture = async () => {
-    setProcessing(true);
-    setError('');
-    try {
-      const response = await fetch('/api/capture', { method: 'POST' });
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      // Navigate to the result page with prediction + nutrition data
-      const params = new URLSearchParams({
-        prediction: data.prediction ?? 'Unknown',
-        image: data.image ?? '',
-        calories: data.calories ?? 'N/A',
-        carbohydrates: data.carbohydrates ?? 'N/A',
-        protein: data.protein ?? 'N/A',
-        fat: data.fat ?? 'N/A',
-        fiber: data.fiber ?? 'N/A',
-        sugar: data.sugar ?? 'N/A',
-      });
-      navigate(`/result?${params.toString()}`);
-    } catch (err) {
-      console.error('Error capturing image:', err);
-      setError(err.message || 'Failed to capture image. Please try again.');
-    } finally {
-      setProcessing(false);
-    }
-  };
+  const [status, setStatus] = useState('loading'); // loading | ready | error
 
   return (
-    <>
-      <img src="/live_feed" id="video-feed" alt="Live Feed" />
-      <button id="capture-button" onClick={handleCapture} disabled={processing}>
-        {processing ? 'Processing...' : 'Capture Image'}
-      </button>
-      {error && <p style={{ color: '#ff4d4d', marginTop: '10px' }}>{error}</p>}
-    </>
+    <div className="live-feed">
+      {status === 'loading' && (
+        <div className="live-feed__placeholder" role="status">
+          <FiVideo className="spin" aria-hidden="true" />
+          <p>Connecting to camera…</p>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="live-feed__placeholder live-feed__placeholder--error" role="alert">
+          <FiVideoOff aria-hidden="true" />
+          <p>Camera feed unavailable. Is the backend running?</p>
+        </div>
+      )}
+      <img
+        src={liveFeedUrl}
+        id="video-feed"
+        alt="Live camera feed showing the food in front of the camera"
+        onLoad={() => setStatus('ready')}
+        onError={() => setStatus('error')}
+        style={{ display: status === 'ready' ? 'block' : 'none' }}
+      />
+    </div>
   );
 }

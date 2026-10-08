@@ -1,126 +1,366 @@
+/* Global styles ported from backend/static/style/style.css (the stylesheet of
+   the original Flask templates). Original rules are preserved; class-based
+   selectors, responsive breakpoints and accessibility helpers were added so
+   the markup can stay identical while being reusable across React components. */
+
+:root {
+  --accent-gold: #ffd700;
+  --accent-amber: #ffc107;
+  --card-bg: rgba(255, 255, 255, 0.9);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Poppins', sans-serif;
-    color: #fff;
-    height: 100vh;
-    overflow: hidden; /* Prevent scrolling */
-    animation: backgroundRotation 30s infinite linear; /* Background rotation animation */
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  /* allow scrolling on small screens where content is taller than the viewport */
+  overflow-x: hidden;
+  animation: backgroundRotation 30s infinite linear; /* Background rotation animation */
 }
 
 @keyframes backgroundRotation {
-    0% {
-        background-image: url("./assets/back.jpg");
-        background-size: cover;
-    }
-    25% {
-        background-image: url("./assets/back1.jpeg");
-        background-size: cover;
-    }
-    50% {
-        background-image: url("./assets/back2.jpeg");
-        background-size: cover;
-    }
-    75% {
-        background-image: url("./assets/back5.jpeg");
-        background-size: cover;
-    }
-    100% {
-        background-image: url("./assets/back4.jpg");
-        background-size: cover;
-    }
+  0% {
+    background-image: url('./assets/back.jpg');
+    background-size: cover;
+  }
+  25% {
+    background-image: url('./assets/back1.jpeg');
+    background-size: cover;
+  }
+  50% {
+    background-image: url('./assets/back2.jpeg');
+    background-size: cover;
+  }
+  75% {
+    background-image: url('./assets/back5.jpeg');
+    background-size: cover;
+  }
+  100% {
+    background-image: url('./assets/back4.jpg');
+    background-size: cover;
+  }
 }
 
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header ---------- */
+.app-header,
 header {
-    text-align: center;
-    padding: 20px 10px;
-    background: rgba(0, 0, 0, 0.9);
-    border-radius: 15px;
-    margin: 20px auto;
-    width: fit-content;
-    animation: fadeIn 1s ease-in-out;
+  text-align: center;
+  padding: 20px 10px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 15px;
+  margin: 20px auto;
+  width: fit-content;
+  max-width: 92%;
+  animation: fadeIn 1s ease-in-out;
 }
 
+.app-header h1,
 header h1 {
-    margin: 0;
-    font-size: 3rem;
-    color: #FFD700;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  margin: 0;
+  font-size: 3rem;
+  color: var(--accent-gold);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
 
+.app-header__subtitle {
+  margin: 8px 0 0;
+  font-size: 1rem;
+  opacity: 0.85;
+}
+
+/* ---------- Main / layout ---------- */
 main {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    animation: slideIn 1s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: slideIn 1s ease-in-out;
+  flex: 1;
+  width: 100%;
 }
 
+.page--center main {
+  justify-content: center;
+}
+
+/* ---------- Live feed section ---------- */
 .upload-section {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 20px;
-    border-radius: 20px;
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
-    margin: 20px;
-    text-align: center;
-    width: 90%;
-    max-width: 500px;
-    transition: transform 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
-    position: relative;
-    overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+  margin: 20px;
+  text-align: center;
+  width: 90%;
+  max-width: 500px;
+  transition: transform 0.5s ease-in-out, box-shadow 0.5s ease-in-out;
+  position: relative;
+  overflow: hidden;
 }
 
 .upload-section:hover {
-    transform: scale(1.05);
-    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.7);
+  transform: scale(1.05);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.7);
 }
 
-img {
-    max-width: 100%;
-    border-radius: 15px;
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
-    transition: transform 0.3s ease-in-out;
+.live-feed {
+  min-height: 120px;
 }
 
-button {
-    background-color: #FFD700;
-    color: black;
-    font-size: 1.2rem;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
-    position: relative;
-    overflow: hidden;
+.live-feed img,
+#video-feed {
+  max-width: 100%;
+  border-radius: 15px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease-in-out;
 }
 
-button:hover {
-    background-color: #FFC107;
-    transform: scale(1.1);
-    box-shadow: 0 8px 15px rgba(255, 193, 7, 0.6);
+.live-feed__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 10px;
+  color: #ffe100;
+  font-size: 1.1rem;
 }
 
-/* Keyframes for Animations */
+.live-feed__placeholder--error {
+  color: #ff6b6b;
+}
+
+/* ---------- Result card ---------- */
+.card,
+.nutrition-card {
+  background: var(--card-bg);
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.card h2,
+.card h3,
+.nutrition-card h2,
+.nutrition-card h3 {
+  margin: 10px 0;
+  color: #f20b0b;
+}
+
+.card img,
+.nutrition-card img {
+  max-width: 100%;
+  border-radius: 15px;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+  margin: 15px 0;
+}
+
+.card ul,
+.nutrition-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0;
+  text-align: left;
+}
+
+.card li,
+.nutrition-card li {
+  margin: 5px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.nutrition-card p {
+  color: #333;
+}
+
+/* ---------- Buttons ---------- */
+button,
+.retake-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--accent-gold);
+  color: black;
+  font-size: 1.2rem;
+  font-family: inherit;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+button:hover:not(:disabled),
+.retake-button:hover {
+  background-color: var(--accent-amber);
+  transform: scale(1.1);
+  box-shadow: 0 8px 15px rgba(255, 193, 7, 0.6);
+}
+
+button:focus-visible,
+.retake-button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #ffe100;
+  outline-offset: 3px;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(242, 11, 11, 0.85);
+  color: #fff;
+  font-size: 1rem;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+.error-banner button,
+.error-banner__dismiss {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 1rem;
+  background: transparent;
+  color: #fff;
+}
+
+.error-banner__dismiss:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Footer ---------- */
+.app-footer {
+  text-align: center;
+  padding: 12px;
+  font-size: 0.85rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
+}
+
+/* ---------- Animations ---------- */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ---------- Accessibility helper ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .app-header,
+  main,
+  .upload-section,
+  .spin {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .app-header h1 {
+    font-size: 2.2rem;
+  }
+
+  .upload-section {
+    width: 100%;
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .upload-section:hover {
+    transform: none; /* avoid accidental zoom on touch devices */
+  }
+
+  .card,
+  .nutrition-card {
+    padding: 20px;
+  }
+
+  .card li,
+  .nutrition-card li {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header h1 {
+    font-size: 1.7rem;
+  }
+
+  button,
+  .retake-button {
+    font-size: 1rem;
+    padding: 10px 18px;
+  }
 }
