@@ -22,7 +22,14 @@ USDA_API_KEY = os.environ.get("USDA_API_KEY", "lw9DCn2bR0LvcVyjZGFqDchc3CURiSIMd
 # One shared camera instance: a background thread reads + JPEG-encodes frames
 # once, so /live_feed no longer reopens the device or re-encodes per client,
 # and /api/capture never blocks waiting for a grab.
-camera = Camera(source=int(os.environ.get("CAMERA_SOURCE", "0")))
+# CAMERA_SOURCE can be a webcam index (0, 1, ...) or a video-file/stream URL,
+# e.g.  CAMERA_SOURCE=sample_food.mp4 python3 run.py
+_cam_source = os.environ.get("CAMERA_SOURCE", "0")
+try:
+    _cam_source = int(_cam_source)
+except ValueError:
+    pass  # treat as file path / stream URL
+camera = Camera(source=_cam_source)
 camera.start()
 
 # USDA lookups are cached per food name; repeated captures of the same food
@@ -41,7 +48,8 @@ def run_capture():
     """
     frame = camera.current_frame
     if frame is None:
-        return None, "No frame to capture"
+        return None, ("No camera frame available — connect a webcam "
+                      "(or set CAMERA_SOURCE to a video file/URL) and try again.")
 
     try:
         t0 = time.perf_counter()
