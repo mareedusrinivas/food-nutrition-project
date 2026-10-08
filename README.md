@@ -1,1 +1,73 @@
-The study of calorimetry involves measuring the amount of heat released or absorbed during chemical reactions, physical changes, or phase transitions. In the context of food science, calorimetry is crucial for determining the caloric content of food items. Traditional methods of calorimetric analysis can be time consuming and require significant manual intervention. The integration of image processing and Internet of Things (IoT) technologies offers a novel approach to automate and enhance the accuracy of calorimetric measurements in food. Objective: This project aims to develop a system that utilizes image processing and IoT to measure the caloric content of burned food samples efficiently and accurately. The system is designed to automate the data collection process, enhance the precision of measurements, and provide real-time monitoring and analysis. Keywords: Machine Learning, Open CV ,Image Processing, IoT Integration, Data Analysis.
+# Live Food Detection & Calorimetry (React + Flask)
+
+The project is split into two independent parts:
+
+```
+.
+├── frontend/          # React (Vite) single-page app  — all UI
+│   ├── src/
+│   │   ├── pages/        Home.jsx (camera feed + capture), Result.jsx (nutrition card)
+│   │   ├── components/   LiveFeed.jsx
+│   │   └── App.jsx       React Router routes (/ and /result)
+│   └── vite.config.js    Dev-server proxy to the Flask backend
+├── backend/           # Flask API + YOLO model + IoT assets
+│   ├── app.py            REST endpoints (/api/capture, /live_feed, …)
+│   ├── scripts/          train.py / infer.py / evaluation.py
+│   ├── data.yaml         YOLO dataset config
+│   ├── yolov8n.pt        Model weights
+│   ├── dataset/ runs/ inference_results/
+│   ├── static/ templates/  Legacy Flask assets (kept for backwards compatibility)
+│   ├── iot-related files live in ../iot (ESP32 firmware)
+│   └── requirements.txt
+└── iot/               # ESP32 / Arduino firmware
+```
+
+## Frontend (React)
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+The Vite dev server proxies `/api`, `/live_feed`, and `/static/uploads` to the
+Flask backend on port 5000, so no CORS configuration is needed during development.
+
+Production build:
+
+```bash
+cd frontend && npm run build   # outputs frontend/dist
+```
+
+## Backend (Flask)
+
+```bash
+cd backend
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py                                     # http://localhost:5000
+```
+
+Optionally set your own USDA API key via environment variable:
+
+```bash
+export USDA_API_KEY=your_key     # see backend/.env.example
+```
+
+If `frontend/dist` exists, Flask also serves the built React SPA at
+http://localhost:5000 (client-side routes fall back to `index.html`).
+
+## API Contract
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/live_feed` | GET | MJPEG camera stream (consumed via `<img src="/live_feed">`) |
+| `/api/capture` | POST | Captures current frame → YOLO prediction → USDA nutrition lookup → JSON `{prediction, image, calories, carbohydrates, protein, fat, fiber, sugar}` |
+| `/capture`, `/result` | GET/POST | Legacy redirect-based Jinja flow (deprecated) |
+
+## Routes
+
+| Route | Description |
+|---|---|
+| React `/` | Home page – live camera feed + Capture button |
+| React `/result` | Prediction + nutritional information card |
