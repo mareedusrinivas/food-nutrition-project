@@ -27,14 +27,15 @@ The project is split into two independent parts:
 From the repository root:
 
 ```bash
-pip install -r backend/requirements.txt   # one-time Python deps
-cd frontend && npm install && cd ..       # one-time frontend deps
-
 python run.py            # dev mode: Flask :5000 + Vite React dev server :5173
 python run.py --build    # production mode: builds React app, Flask serves it at :5000
 ```
 
-`run.py` starts both services together and stops them cleanly with Ctrl+C.
+`run.py` **auto-installs missing dependencies** for you — if `node_modules` or the
+Python packages (flask, opencv, etc.) are absent, it automatically runs
+`pip install -r backend/requirements.txt` and `npm install` before starting.
+So a fresh clone only needs Python 3, Node.js ≥ 18, and this single command.
+It starts both services together and stops them cleanly with Ctrl+C.
 
 ## Frontend (React)
 
