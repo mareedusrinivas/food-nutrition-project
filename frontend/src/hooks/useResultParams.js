@@ -29,7 +29,7 @@ export default function useResultParams(searchParams) {
   useEffect(() => {
     document.title = 'Food Prediction Result';
     return () => {
-      document.title = 'Live Food Detection';
+      document.title = 'Food Detection';
     };
   }, []);
 

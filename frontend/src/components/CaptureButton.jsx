@@ -1,10 +1,11 @@
 import { FiLoader } from 'react-icons/fi';
 
 /**
- * CaptureButton — the "Capture Image" button from templates/index.html.
- * Shows a spinner while a capture is in flight; text stays "Capture Image".
+ * CaptureButton — the primary action button ("Analyze Image" in upload mode,
+ * "Capture Image" in camera mode). Shows a spinner while a request is in
+ * flight; kept as one reusable component for both flows.
  */
-export default function CaptureButton({ onCapture, processing }) {
+export default function CaptureButton({ onCapture, processing, label = 'Capture Image' }) {
   return (
     <button
       id="capture-button"
@@ -15,10 +16,10 @@ export default function CaptureButton({ onCapture, processing }) {
       aria-busy={processing}
     >
       {processing && <FiLoader className="spin" aria-hidden="true" />}
-      Capture Image
+      {label}
       {/* live region so screen readers announce the processing state */}
       <span className="sr-only" role="status">
-        {processing ? 'Capturing and analyzing image' : ''}
+        {processing ? 'Analyzing image, please wait' : ''}
       </span>
     </button>
   );

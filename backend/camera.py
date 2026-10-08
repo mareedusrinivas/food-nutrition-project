@@ -1,5 +1,8 @@
 """Threaded camera reader for the live MJPEG feed.
 
+Only used when the backend is started with ENABLE_CAMERA=1 — the default
+flow is image upload, so no webcam device is ever opened unless opted in.
+
 Performance notes:
 - A single background thread owns the ``cv2.VideoCapture`` and continuously
   reads frames, so HTTP requests never block on camera I/O and the camera
@@ -17,7 +20,19 @@ import sys
 import threading
 import time
 
+import numpy as np
 import cv2
+
+
+def make_placeholder_jpeg(width=640, height=480, jpeg_quality=80):
+    """Dark 'No camera detected' frame as JPEG bytes (used by /live_feed
+    placeholder mode and by the frontend upload preview fallback)."""
+    img = np.full((height, width, 3), 28, dtype=np.uint8)
+    cv2.putText(img, 'No camera detected', (150, 235),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 225, 0), 2)
+    ok, buf = cv2.imencode('.jpg', img,
+                           [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
+    return buf.tobytes() if ok else b''
 
 
 def _silence_opencv_logs():

@@ -2,7 +2,9 @@ import os
 import time
 
 import cv2
-from flask import Flask, request, render_template, Response, redirect, url_for, jsonify, send_from_directory
+import numpy as np
+from flask import (Flask, request, render_template, Response, redirect,
+                   url_for, jsonify, send_from_directory)
 
 from camera import Camera
 from nutrition import NutritionClient
@@ -14,42 +16,51 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Let browsers/CDNs cache the static React bundle & uploaded images briefly.
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 300
+# Accept uploads up to 20 MB at the Flask layer (we enforce a friendlier
+# 10 MB limit with a clear JSON message inside _read_upload).
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
 class_names = ['Apple', 'Chapati', 'Chicken Gravy', 'Fries', 'Idli', 'Pizza', 'Rice', 'Soda', 'Tomato', 'Vada', 'Banana', 'Hamburger']
 
 USDA_API_KEY = os.environ.get("USDA_API_KEY", "lw9DCn2bR0LvcVyjZGFqDchc3CURiSIMd5t5vzxw")
 
-# One shared camera instance: a background thread reads + JPEG-encodes frames
-# once, so /live_feed no longer reopens the device or re-encodes per client,
-# and /api/capture never blocks waiting for a grab.
-# CAMERA_SOURCE can be a webcam index (0, 1, ...) or a video-file/stream URL,
-# e.g.  CAMERA_SOURCE=sample_food.mp4 python3 run.py
-_cam_source = os.environ.get("CAMERA_SOURCE", "0")
-try:
-    _cam_source = int(_cam_source)
-except ValueError:
-    pass  # treat as file path / stream URL
-camera = Camera(source=_cam_source)
-camera.start()
+# The app is image-upload driven by default — NO webcam is opened unless the
+# user explicitly opts in with ENABLE_CAMERA=1. When disabled we skip creating
+# the Camera object entirely, so there are zero OpenCV camera warnings/errors
+# in the console on machines without (or with an ignored) webcam.
+# CAMERA_SOURCE can be a webcam index (0, 1, ...) or a video-file/stream URL.
+ENABLE_CAMERA = os.environ.get("ENABLE_CAMERA", "0").lower() in ("1", "true", "yes", "on")
+camera = None
+if ENABLE_CAMERA:
+    _cam_source = os.environ.get("CAMERA_SOURCE", "0")
+    try:
+        _cam_source = int(_cam_source)
+    except ValueError:
+        pass  # treat as file path / stream URL
+    camera = Camera(source=_cam_source)
+    camera.start()
 
 # USDA lookups are cached per food name; repeated captures of the same food
 # return instantly instead of making an external HTTP call every time.
 nutrition_client = NutritionClient(USDA_API_KEY)
 
 
-def run_capture():
-    """Grab the latest frame, classify it, and look up nutrition data.
+def run_capture(frame=None):
+    """Classify a frame and look up nutrition data.
 
-    Returns (payload_dict, error_message). The frame is fed directly to the
-    model as a numpy array — the previous flow wrote a JPEG to disk and read
-    it back inside YOLO, adding unnecessary I/O latency to every capture.
-    The snapshot is still saved asynchronously-ish (cheap imwrite after the
-    slow prediction) so the result page has a stable image URL.
+    ``frame`` is a BGR numpy array — from an uploaded image (the default
+    upload-only flow) or, when ENABLE_CAMERA=1, the latest camera frame.
+    The frame is fed directly to the model as a numpy array — the previous
+    flow wrote a JPEG to disk and read it back inside YOLO, adding
+    unnecessary I/O latency to every capture. The snapshot is saved after
+    the slow prediction so the result page has a stable image URL.
+
+    Returns (payload_dict, error_message).
     """
-    frame = camera.current_frame
     if frame is None:
-        return None, ("No camera frame available — connect a webcam "
-                      "(or set CAMERA_SOURCE to a video file/URL) and try again.")
+        frame = camera.current_frame if camera is not None else None
+    if frame is None:
+        return None, ("No image received — please upload a photo of the food.")
 
     try:
         t0 = time.perf_counter()
@@ -83,19 +94,75 @@ def run_capture():
         return None, f"Error during capture: {str(e)}"
 
 
-# Live Camera Feed — MJPEG stream served from the shared encoded frames.
+# Live Camera Feed — MJPEG stream (only when ENABLE_CAMERA=1). When camera
+# mode is off the frontend never requests this; we still answer with a plain
+# 503 instead of hanging on an empty stream.
 @app.route('/live_feed')
 def live_feed():
+    if camera is None:
+        return jsonify({"error": "Camera is disabled. Upload an image instead "
+                                 "(or start the backend with ENABLE_CAMERA=1)."}), 503
     return Response(camera.stream(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-# JSON API for the React frontend (frontend/src/components/LiveFeed.jsx)
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _read_upload():
+    """Decode the multipart 'image' file into a BGR numpy array.
+
+    Returns (frame, error_message). Uses np.frombuffer + cv2.imdecode so any
+    format OpenCV understands (jpg/png/webp/bmp…) works, without trusting the
+    client-supplied MIME type or filename.
+    """
+    file = request.files.get('image')
+    if file is None or file.filename == '':
+        return None, "No image uploaded. Please choose a photo of the food."
+
+    raw = file.read(MAX_UPLOAD_BYTES + 1)
+    if not raw:
+        return None, "The uploaded file is empty."
+    if len(raw) > MAX_UPLOAD_BYTES:
+        return None, "Image too large (max 10 MB). Please choose a smaller photo."
+
+    frame = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if frame is None:
+        return None, "Could not read that file as an image. Please upload a JPG/PNG photo."
+
+    # Downscale very large photos before inference: faster YOLO pass and
+    # smaller saved snapshot, with no accuracy impact at these sizes.
+    h, w = frame.shape[:2]
+    max_side = 1280
+    if max(h, w) > max_side:
+        scale = max_side / float(max(h, w))
+        frame = cv2.resize(frame, (int(w * scale), int(h * scale)),
+                           interpolation=cv2.INTER_AREA)
+    return frame, None
+
+
+# JSON API for the React frontend: upload a food photo -> prediction + nutrition.
+# This is the primary flow; the camera is opt-in (ENABLE_CAMERA=1).
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
+    frame, error = _read_upload()
+    if error:
+        return jsonify({"error": error}), 400
+    payload, error = run_capture(frame)
+    if error:
+        status = 500 if error.startswith("Error") else 400
+        return jsonify({"error": error}), status
+    return jsonify(payload)
+
+
+# JSON API for the React frontend (camera mode only)
 # Previously this redirected to the Flask-rendered /result page; now it
 # returns the prediction + nutrition data as JSON so React can navigate
 # to its own /result route.
 @app.route('/api/capture', methods=['POST'])
 def api_capture():
+    if camera is None:
+        return jsonify({"error": "Camera is disabled — upload an image instead."}), 503
     payload, error = run_capture()
     if error:
         status = 500 if error.startswith("Error") else 503
@@ -104,10 +171,16 @@ def api_capture():
 
 
 # Legacy endpoint kept for backwards compatibility with the old
-# static/js/script.js flow (redirect-based). The React app uses /api/capture.
+# static/js/script.js flow (redirect-based). Accepts an optional uploaded
+# 'image' file; falls back to the camera frame when camera mode is enabled.
 @app.route('/capture', methods=['POST'])
 def capture():
-    payload, error = run_capture()
+    frame, error = (None, None)
+    if request.files.get('image'):
+        frame, error = _read_upload()
+        if error:
+            return jsonify({"error": error}), 400
+    payload, error = run_capture(frame)
     if error:
         status = 500 if error.startswith("Error") else 503
         return jsonify({"error": error}), status
